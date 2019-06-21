@@ -5,7 +5,7 @@ const partials = require('express-partials');
 const bodyParser = require('body-parser');
 const Auth = require('./middleware/auth');
 const models = require('./models');
-
+const db = require('./db/index');
 const app = express();
 
 app.set('views', `${__dirname}/views`);
@@ -18,66 +18,119 @@ app.use(express.static(path.join(__dirname, '../public')));
 
 
 app.get('/', 
-(req, res) => {
-  res.render('index');
-});
+  (req, res) => {
+    res.render('index');
+  });
 
 app.get('/create', 
-(req, res) => {
-  res.render('index');
-});
+  (req, res) => {
+    res.render('index');
+  });
 
 app.get('/links', 
-(req, res, next) => {
-  models.Links.getAll()
-    .then(links => {
-      res.status(200).send(links);
-    })
-    .error(error => {
-      res.status(500).send(error);
-    });
-});
+  (req, res, next) => {
+    models.Links.getAll()
+      .then(links => {
+        res.status(200).send(links);
+      })
+      .error(error => {
+        res.status(500).send(error);
+      });
+  });
 
 app.post('/links', 
-(req, res, next) => {
-  var url = req.body.url;
-  if (!models.Links.isValidUrl(url)) {
+  (req, res, next) => {
+    var url = req.body.url;
+    if (!models.Links.isValidUrl(url)) {
     // send back a 404 if link is not valid
-    return res.sendStatus(404);
-  }
+      return res.sendStatus(404);
+    }
 
-  return models.Links.get({ url })
-    .then(link => {
-      if (link) {
+    return models.Links.get({ url })
+      .then(link => {
+        if (link) {
+          throw link;
+        }
+        return models.Links.getUrlTitle(url);
+      })
+      .then(title => {
+        return models.Links.create({
+          url: url,
+          title: title,
+          baseUrl: req.headers.origin
+        });
+      })
+      .then(results => {
+        return models.Links.get({ id: results.insertId });
+      })
+      .then(link => {
         throw link;
-      }
-      return models.Links.getUrlTitle(url);
-    })
-    .then(title => {
-      return models.Links.create({
-        url: url,
-        title: title,
-        baseUrl: req.headers.origin
+      })
+      .error(error => {
+        res.status(500).send(error);
+      })
+      .catch(link => {
+        res.status(200).send(link);
       });
-    })
-    .then(results => {
-      return models.Links.get({ id: results.insertId });
-    })
-    .then(link => {
-      throw link;
-    })
-    .error(error => {
-      res.status(500).send(error);
-    })
-    .catch(link => {
-      res.status(200).send(link);
-    });
-});
+  });
 
 /************************************************************/
 // Write your authentication routes here
 /************************************************************/
 
+//user sends in username and password
+// check if the username exists via query the database for the username
+// if it does exist, tell the user that the username is taken
+// if it doesn't, store it in the database with .create
+
+
+app.post('/signup', 
+  (req, res, next) => {
+    var password = req.body.password;
+    var username = req.body.username;
+    db.query(`SELECT username FROM users WHERE username = "${username}"`, (err, user) => {
+      if (err) {
+        console.error(err);
+        res.status(404).send('Error!');
+      } else if (user.length === 0) {
+        models.Users.create({username, password});
+        console.log('Created user!');
+        res.redirect(201, '/');
+      } else {
+        //redirects to signup if user already exists /signup
+        res.redirect('/signup');
+      }
+    });
+  });
+
+app.post('/login',
+  (req, res, next) => {
+    var salt;
+    var password;
+    var username = req.body.username;
+    var attemptedPW = req.body.password;
+    var checkPassword = function () {
+      var bool = models.Users.compare(attemptedPW, password, salt);
+      if (bool) {
+        console.log('Successfully logged in');
+        res.redirect('/');
+      } else {
+        console.log('Error logging in');
+        res.redirect(404, '/login');
+      }
+    };
+
+    db.query(`SELECT salt, password FROM users WHERE username = "${username}"`, (err, data) => {
+      if (err || data.length === 0) {
+        console.error(err);
+        res.redirect(404, '/login');
+      } else {
+        salt = data[0].salt;
+        password = data[0].password;
+        checkPassword();
+      } 
+    });
+  });
 
 
 /************************************************************/
