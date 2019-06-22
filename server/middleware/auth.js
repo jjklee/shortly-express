@@ -2,27 +2,39 @@ const models = require('../models');
 const Promise = require('bluebird');
 
 module.exports.createSession = (req, res, next) => {
-
-  req.session = {};
   let cookies = req.cookies;
   // 1. If no cookies, generate a session
-  console.log('COOKIES ----------', cookies);
   if (Object.keys(cookies).length === 0) {
-    console.log('in no cookies');
     models.Sessions.create()
-    req.session.hash = 
-    // models.Sessions.get( {hash: req.session.hash})
-      // .then(session => {
-      //   req.session = session;
-      //   console.log('Created new session with no cookies');
-      //   res.status('201').send('Success');
-      // })
-      .catch(err => {
-        console.log('Error creating new session with no cookies')
-      });
-    res.end();
+      .then((data) => {
+        models.Sessions.get({id: data.insertId })
+          .then((session) => {
+            req.session = session;
+            res.cookie('shortlyid', session.hash)
+            console.log('session created for no cookies');
+            next();
+          })
+          .catch(err => {
+            console.log('Error getting session for no cookies');
+            res.status(404).send('Error');
+          })
+      })
   } else if (Object.keys(cookies).length > 0) {
-    //verify cookie
+    models.Sessions.create()
+      .then((data) => {
+        models.Sessions.get({id: data.insertId })
+          .then((session) => {
+            req.session = session;
+            res.cookie('shortlyid', session.hash)
+            console.log('session created for no cookies');
+            next();
+          })
+          .catch(err => {
+            console.log('Error getting session for no cookies');
+            res.status(404).send('Error');
+          })
+      })
+
     // if (/*if (select hash from sessions) exists*/) {
     //   models.Sessions.get({hash: req.cookies.shortlyid})
     //   .then((session) => {
