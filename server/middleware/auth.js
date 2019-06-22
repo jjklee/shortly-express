@@ -2,27 +2,39 @@ const models = require('../models');
 const Promise = require('bluebird');
 
 module.exports.createSession = (req, res, next) => {
-  req.session = {
-    userId: req.body.username
-  };
-  // let cookies = req.cookies;
 
+  req.session = {};
+  let cookies = req.cookies;
   // 1. If no cookies, generate a session
-  if (models.Sessions.get()) {
-    console.log('models.session.create ----------', models.Sessions.create());
-  }
+  console.log('COOKIES ----------', cookies);
+  if (Object.keys(cookies).length === 0) {
+    console.log('in no cookies');
+    models.Sessions.create()
+    req.session.hash = 
+    // models.Sessions.get( {hash: req.session.hash})
+      // .then(session => {
+      //   req.session = session;
+      //   console.log('Created new session with no cookies');
+      //   res.status('201').send('Success');
+      // })
+      .catch(err => {
+        console.log('Error creating new session with no cookies')
+      });
+    res.end();
+  } else if (Object.keys(cookies).length > 0) {
+    //verify cookie
+    // if (/*if (select hash from sessions) exists*/) {
+    //   models.Sessions.get({hash: req.cookies.shortlyid})
+    //   .then((session) => {
+    //     /*verify hash to cookies*/ 
+    //     if (verified) {
+    //       // create req.session
+    //       req.session = session
+    //     }
+    //   })
 
-  //models.Session.get({username = req.body.username})
-  //if session
-  //then
-
-  // if (!cookies) {
-  //   //generate a session with uniq hash
-  //   //set a cookie in the response headers (cookieParser)
-  // } else {
-  //   //check if cookie is valid
-  //   //
-  // }
+    // }
+  } 
 };
 
 /************************************************************/
@@ -52,4 +64,15 @@ middleware should verify that the cookie is valid
 
 If an incoming cookie is not valid, what do you 
 think you should do with that session and cookie?
+*/
+
+/* End of day notes:
+
+When a user is not logged in, their session, 
+userID in the sessions table.
+
+Hypothetically, when a user logs in, their userid
+would then be associated with their hash/cookie
+in the sessions table.
+
 */

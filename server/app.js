@@ -103,6 +103,23 @@ app.post('/signup',
     });
   });
 
+// app.post('/signup', 
+//   (req, res, next) => {
+//     var password = req.body.password;
+//     var username = req.body.username;
+//     models.Users.get({username})
+//       .then( () => {
+//         res.redirect('/signup');
+//       })
+//       .catch( () => {
+//         if (user.length === 0) {
+//           models.Users.create({username, password});
+//           console.log('Created user!');
+//           res.redirect(201, '/');
+//         }
+//       });
+//   });
+
 app.post('/login',
   (req, res, next) => {
     var salt;
